@@ -1,0 +1,1 @@
+ALTER TABLE public.nxenesit ADD COLUMN IF NOT EXISTS nr_telefoni text;
