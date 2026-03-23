@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Users } from "lucide-react";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import EmptyState from "@/components/EmptyState";
+import TableSkeleton from "@/components/TableSkeleton";
 
 const Nxenesit = () => {
   const queryClient = useQueryClient();
@@ -19,7 +22,7 @@ const Nxenesit = () => {
     queryKey: ["nxenesit", search],
     queryFn: async () => {
       let query = supabase.from("nxenesit").select("*").order("mbiemri");
-      if (search) query = query.or(`emri.ilike.%${search}%,mbiemri.ilike.%${search}%,nr_amzes.ilike.%${search}%`);
+      if (search) query = query.or(`emri.ilike.%${search}%,mbiemri.ilike.%${search}%,nr_amzes.ilike.%${search}%,klasa.ilike.%${search}%`);
       const { data } = await query;
       return data ?? [];
     },
@@ -27,13 +30,10 @@ const Nxenesit = () => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload: any = {
-        emri: form.emri,
-        mbiemri: form.mbiemri,
-        klasa: form.klasa || null,
-        nr_amzes: form.nr_amzes || null,
-        email: form.email || null,
-        nr_telefoni: form.nr_telefoni || null,
+      const payload = {
+        emri: form.emri, mbiemri: form.mbiemri,
+        klasa: form.klasa || null, nr_amzes: form.nr_amzes || null,
+        email: form.email || null, nr_telefoni: form.nr_telefoni || null,
       };
       if (editId) {
         const { error } = await supabase.from("nxenesit").update(payload).eq("id", editId);
@@ -43,11 +43,7 @@ const Nxenesit = () => {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["nxenesit"] });
-      toast.success(editId ? "Nxënësi u përditësua" : "Nxënësi u shtua");
-      resetForm();
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["nxenesit"] }); toast.success(editId ? "Nxënësi u përditësua" : "Nxënësi u shtua"); resetForm(); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -69,14 +65,17 @@ const Nxenesit = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Nxënësit</h2>
-          <p className="text-sm text-muted-foreground">Menaxhoni listën e nxënësve</p>
+          <h2 className="text-2xl font-bold tracking-tight">Nxënësit</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Menaxhoni listën e nxënësve
+            {nxenesit && <span className="ml-2 font-semibold text-foreground">({nxenesit.length} gjithsej)</span>}
+          </p>
         </div>
         <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); setOpen(v); }}>
           <DialogTrigger asChild>
-            <Button><Plus className="w-4 h-4 mr-2" />Shto Nxënës</Button>
+            <Button className="bg-primary hover:bg-primary/90"><Plus className="w-4 h-4 mr-2" />Shto Nxënës</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>{editId ? "Përditëso Nxënësin" : "Shto Nxënës të Ri"}</DialogTitle></DialogHeader>
@@ -93,55 +92,67 @@ const Nxenesit = () => {
                 <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
                 <div className="space-y-2"><Label>Nr. Telefoni</Label><Input type="tel" value={form.nr_telefoni} onChange={(e) => setForm({ ...form, nr_telefoni: e.target.value })} placeholder="p.sh. 069 123 4567" /></div>
               </div>
-              <Button type="submit" className="w-full" disabled={saveMutation.isPending}>{saveMutation.isPending ? "Duke ruajtur..." : editId ? "Përditëso" : "Shto"}</Button>
+              <div className="flex gap-3 justify-end">
+                <Button type="button" variant="outline" onClick={resetForm}>Anulo</Button>
+                <Button type="submit" disabled={saveMutation.isPending}>{saveMutation.isPending ? "Duke ruajtur..." : editId ? "Përditëso" : "Shto"}</Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="relative w-80">
+      <div className="relative w-full sm:w-80">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input placeholder="Kërko nxënës..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      <div className="rounded-lg shadow-smooth bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Nr. Amzës</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Emri</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Mbiemri</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Klasa</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Nr. Telefoni</th>
-                <th className="text-right px-5 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Veprime</th>
-              </tr>
-            </thead>
-            <tbody>
-              {nxenesit?.map((n: any) => (
-                <tr key={n.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors duration-150">
-                  <td className="px-5 py-3 font-mono text-xs tabular-nums">{n.nr_amzes || "—"}</td>
-                  <td className="px-5 py-3 font-medium">{n.emri}</td>
-                  <td className="px-5 py-3">{n.mbiemri}</td>
-                  <td className="px-5 py-3 text-muted-foreground">{n.klasa || "—"}</td>
-                  <td className="px-5 py-3 text-muted-foreground">{n.email || "—"}</td>
-                  <td className="px-5 py-3 text-muted-foreground">{n.nr_telefoni || "—"}</td>
-                  <td className="px-5 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => startEdit(n)}><Pencil className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(n.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {(!nxenesit || nxenesit.length === 0) && !isLoading && (
-                <tr><td colSpan={7} className="px-5 py-8 text-center text-muted-foreground">Nuk ka nxënës ende</td></tr>
-              )}
-            </tbody>
-          </table>
+      {isLoading ? (
+        <TableSkeleton columns={7} rows={6} />
+      ) : !nxenesit || nxenesit.length === 0 ? (
+        <div className="rounded-xl shadow-smooth bg-card">
+          <EmptyState icon={Users} title="Nuk ka nxënës ende" description="Shtoni nxënësin e parë duke klikuar butonin 'Shto Nxënës'" />
         </div>
-      </div>
+      ) : (
+        <div className="rounded-xl shadow-smooth bg-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="text-left px-4 sm:px-5 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Nr. Amzës</th>
+                  <th className="text-left px-4 sm:px-5 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Emri</th>
+                  <th className="text-left px-4 sm:px-5 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Mbiemri</th>
+                  <th className="text-left px-4 sm:px-5 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Klasa</th>
+                  <th className="text-left px-4 sm:px-5 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Email</th>
+                  <th className="text-left px-4 sm:px-5 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Nr. Telefoni</th>
+                  <th className="text-right px-4 sm:px-5 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Veprime</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nxenesit.map((n: any) => (
+                  <tr key={n.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                    <td className="px-4 sm:px-5 py-3 font-mono text-xs tabular-nums">{n.nr_amzes || "—"}</td>
+                    <td className="px-4 sm:px-5 py-3 font-medium">{n.emri}</td>
+                    <td className="px-4 sm:px-5 py-3">{n.mbiemri}</td>
+                    <td className="px-4 sm:px-5 py-3 text-muted-foreground hidden sm:table-cell">{n.klasa || "—"}</td>
+                    <td className="px-4 sm:px-5 py-3 text-muted-foreground hidden md:table-cell">{n.email || "—"}</td>
+                    <td className="px-4 sm:px-5 py-3 text-muted-foreground hidden lg:table-cell">{n.nr_telefoni || "—"}</td>
+                    <td className="px-4 sm:px-5 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => startEdit(n)}><Pencil className="w-4 h-4" /></Button>
+                        <ConfirmDialog
+                          onConfirm={() => deleteMutation.mutate(n.id)}
+                          title="Fshi Nxënësin?"
+                          description={`Jeni i sigurt që dëshironi të fshini "${n.emri} ${n.mbiemri}"?`}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

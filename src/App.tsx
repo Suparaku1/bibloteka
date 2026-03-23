@@ -12,13 +12,22 @@ import Nxenesit from "@/pages/Nxenesit";
 import Huazimet from "@/pages/Huazimet";
 import Kategorite from "@/pages/Kategorite";
 import Autoret from "@/pages/Autoret";
+import Adminat from "@/pages/Adminat";
+import Raportet from "@/pages/Raportet";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Duke u ngarkuar...</div>;
+  if (loading) return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="text-center space-y-3">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-muted-foreground">Duke u ngarkuar...</p>
+      </div>
+    </div>
+  );
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 };
@@ -46,6 +55,8 @@ const App = () => (
               <Route path="/huazimet" element={<Huazimet />} />
               <Route path="/kategorite" element={<Kategorite />} />
               <Route path="/autoret" element={<Autoret />} />
+              <Route path="/adminat" element={<Adminat />} />
+              <Route path="/raportet" element={<Raportet />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
