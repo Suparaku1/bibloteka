@@ -42,7 +42,7 @@ const Raportet = () => {
   // Unique values for filters
   const autoretUnike = useMemo(() => {
     if (!librat) return [];
-    return [...new Set(librat.map((l: any) => l.autori_emer_mbiemer))].sort();
+    return [...new Set(librat.map((l: any) => l.autori_emer_mbiemer).filter(Boolean))].sort();
   }, [librat]);
 
   const zhaneret = useMemo(() => {
